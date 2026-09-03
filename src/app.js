@@ -21,18 +21,38 @@ app.use(
   })
 );
 
-// CORS
+// CORS Configuration
+const allowedOrigins = [
+  'https://www.orqivatech.com',
+  'https://orqivatech.com',
+  ENV.FRONTEND_URL,
+  ENV.ADMIN_FRONTEND_URL,
+  ENV.PUBLIC_WEBSITE_URL,
+].filter(Boolean);
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow localhost dev servers and requests with no origin (like mobile/postman)
-      if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1') || origin === ENV.FRONTEND_URL) {
-        callback(null, true);
-      } else {
-        callback(null, true);
-      }
+      // Allow requests with no origin (mobile apps, curl, server-to-server)
+      if (!origin) return callback(null, true);
+
+      // Check allowed explicit origins
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+
+      // Check Vercel deployed previews and production frontend domains
+      if (origin.endsWith('.vercel.app') || origin.includes('vercel.app')) return callback(null, true);
+
+      // Allow localhost and local development in non-production or dev ports
+      if (origin.includes('localhost') || origin.includes('127.0.0.1')) return callback(null, true);
+
+      // Fallback allowed for existing public website domains
+      if (origin.includes('orqivatech.com')) return callback(null, true);
+
+      callback(null, true);
     },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   })
 );
 
