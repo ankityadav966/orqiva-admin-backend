@@ -1,7 +1,8 @@
 import nodemailer from 'nodemailer';
 import dns from 'dns';
+import net from 'net';
 
-// Force IPv4 resolution to prevent ENETUNREACH on Render Linux containers
+// Force IPv4 resolution globally to prevent ENETUNREACH on Render Linux containers
 if (dns.setDefaultResultOrder) {
   dns.setDefaultResultOrder('ipv4first');
 }
@@ -15,14 +16,28 @@ const createTransporter = () => {
     host: 'smtp.gmail.com',
     port: 465,
     secure: true, // Use SSL
-    family: 4, // Force IPv4 address lookup
+    // Force IPv4 by providing a custom DNS lookup that only returns IPv4 results
+    lookup: (hostname, options, callback) => {
+      dns.resolve4(hostname, (err, addresses) => {
+        if (err) {
+          // Fallback to default lookup
+          dns.lookup(hostname, { family: 4, ...options }, callback);
+          return;
+        }
+        if (!addresses || addresses.length === 0) {
+          callback(new Error(`No IPv4 addresses found for ${hostname}`));
+          return;
+        }
+        callback(null, addresses[0], 4);
+      });
+    },
     auth: {
       user,
       pass,
     },
-    connectionTimeout: 12000,
-    greetingTimeout: 12000,
-    socketTimeout: 15000,
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 20000,
   });
 };
 
