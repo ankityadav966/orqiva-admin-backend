@@ -7,29 +7,40 @@ if (dns.setDefaultResultOrder) {
   dns.setDefaultResultOrder('ipv4first');
 }
 
+// ─── Resolve Gmail SMTP IPv4 address (bypasses Render's IPv6 preference) ────
+let GMAIL_SMTP_IPV4 = null;
+const resolveGmailIPv4 = () =>
+  new Promise((resolve) => {
+    dns.resolve4('smtp.gmail.com', (err, addresses) => {
+      if (!err && addresses && addresses.length > 0) {
+        GMAIL_SMTP_IPV4 = addresses[0];
+        console.log(`[SMTP] Resolved smtp.gmail.com to IPv4: ${GMAIL_SMTP_IPV4}`);
+      } else {
+        console.warn('[SMTP] Could not resolve smtp.gmail.com to IPv4, will use hostname');
+      }
+      resolve();
+    });
+  });
+// Pre-resolve on module load
+resolveGmailIPv4();
+
 // ─── Transporter ────────────────────────────────────────────────────────────
 const createTransporter = () => {
   const user = process.env.GMAIL_USER || 'ankityadav941318@gmail.com';
   const pass = process.env.GMAIL_APP_PASSWORD || 'fbab yamv kvut rvtm';
-
-  // Custom IPv4-only DNS lookup to bypass Render's IPv6 preference
-  const ipv4Lookup = (hostname, options, callback) => {
-    dns.resolve4(hostname, (err, addresses) => {
-      if (err || !addresses || addresses.length === 0) {
-        // Fallback: force family:4 in default lookup
-        dns.lookup(hostname, { family: 4 }, callback);
-        return;
-      }
-      callback(null, addresses[0], 4);
-    });
-  };
+  // Use resolved IPv4 if available, fall back to hostname
+  const smtpHost = GMAIL_SMTP_IPV4 || 'smtp.gmail.com';
 
   return nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,       // Port 587 + STARTTLS (less likely to be blocked on Render)
-    secure: false,   // false = STARTTLS upgrade after connection
-    requireTLS: true, // Force TLS upgrade, reject if server doesn't support
-    lookup: ipv4Lookup,
+    host: smtpHost,
+    port: 587,        // 587 + STARTTLS — standard submission port, rarely blocked
+    secure: false,    // STARTTLS upgrade after plain connection
+    requireTLS: true, // Reject if server won't do TLS
+    tls: {
+      // Must set servername when connecting by IP so cert validation works
+      servername: 'smtp.gmail.com',
+      rejectUnauthorized: false,
+    },
     auth: {
       user,
       pass,
