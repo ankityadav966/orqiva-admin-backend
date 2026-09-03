@@ -12,32 +12,31 @@ const createTransporter = () => {
   const user = process.env.GMAIL_USER || 'ankityadav941318@gmail.com';
   const pass = process.env.GMAIL_APP_PASSWORD || 'fbab yamv kvut rvtm';
 
+  // Custom IPv4-only DNS lookup to bypass Render's IPv6 preference
+  const ipv4Lookup = (hostname, options, callback) => {
+    dns.resolve4(hostname, (err, addresses) => {
+      if (err || !addresses || addresses.length === 0) {
+        // Fallback: force family:4 in default lookup
+        dns.lookup(hostname, { family: 4 }, callback);
+        return;
+      }
+      callback(null, addresses[0], 4);
+    });
+  };
+
   return nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, // Use SSL
-    // Force IPv4 by providing a custom DNS lookup that only returns IPv4 results
-    lookup: (hostname, options, callback) => {
-      dns.resolve4(hostname, (err, addresses) => {
-        if (err) {
-          // Fallback to default lookup
-          dns.lookup(hostname, { family: 4, ...options }, callback);
-          return;
-        }
-        if (!addresses || addresses.length === 0) {
-          callback(new Error(`No IPv4 addresses found for ${hostname}`));
-          return;
-        }
-        callback(null, addresses[0], 4);
-      });
-    },
+    port: 587,       // Port 587 + STARTTLS (less likely to be blocked on Render)
+    secure: false,   // false = STARTTLS upgrade after connection
+    requireTLS: true, // Force TLS upgrade, reject if server doesn't support
+    lookup: ipv4Lookup,
     auth: {
       user,
       pass,
     },
-    connectionTimeout: 15000,
-    greetingTimeout: 15000,
-    socketTimeout: 20000,
+    connectionTimeout: 20000,
+    greetingTimeout: 20000,
+    socketTimeout: 25000,
   });
 };
 
