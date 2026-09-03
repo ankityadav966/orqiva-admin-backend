@@ -1,50 +1,54 @@
 import nodemailer from 'nodemailer';
 import dns from 'dns';
-import net from 'net';
 
-// Force IPv4 resolution globally to prevent ENETUNREACH on Render Linux containers
+// Force IPv4 resolution globally — prevents ENETUNREACH on Render Linux containers
 if (dns.setDefaultResultOrder) {
   dns.setDefaultResultOrder('ipv4first');
 }
 
-// ─── Resolve Gmail SMTP IPv4 address (bypasses Render's IPv6 preference) ────
-let GMAIL_SMTP_IPV4 = null;
-const resolveGmailIPv4 = () =>
-  new Promise((resolve) => {
-    dns.resolve4('smtp.gmail.com', (err, addresses) => {
-      if (!err && addresses && addresses.length > 0) {
-        GMAIL_SMTP_IPV4 = addresses[0];
-        console.log(`[SMTP] Resolved smtp.gmail.com to IPv4: ${GMAIL_SMTP_IPV4}`);
-      } else {
-        console.warn('[SMTP] Could not resolve smtp.gmail.com to IPv4, will use hostname');
-      }
-      resolve();
+// ─── IPv4 DNS resolver (cached promise) ──────────────────────────────────────
+// createTransporter() MUST await this so the resolved IPv4 is ready before
+// the TCP socket opens. Without await the variable can still be null and
+// the socket falls back to the hostname, which Render resolves as IPv6.
+let _smtpIPv4Promise = null;
+const getSmtpIPv4 = () => {
+  if (!_smtpIPv4Promise) {
+    _smtpIPv4Promise = new Promise((resolve) => {
+      dns.resolve4('smtp.gmail.com', (err, addresses) => {
+        if (!err && addresses?.length > 0) {
+          console.log('[SMTP] smtp.gmail.com resolved to IPv4');
+          resolve(addresses[0]);
+        } else {
+          console.warn('[SMTP] IPv4 DNS resolve failed, falling back to hostname');
+          resolve(null);
+        }
+      });
     });
-  });
-// Pre-resolve on module load
-resolveGmailIPv4();
+  }
+  return _smtpIPv4Promise;
+};
 
-// ─── Transporter ────────────────────────────────────────────────────────────
-const createTransporter = () => {
-  const user = process.env.GMAIL_USER || 'ankityadav941318@gmail.com';
-  const pass = process.env.GMAIL_APP_PASSWORD || 'fbab yamv kvut rvtm';
-  // Use resolved IPv4 if available, fall back to hostname
-  const smtpHost = GMAIL_SMTP_IPV4 || 'smtp.gmail.com';
+// ─── Transporter factory (async — awaits IPv4 resolution) ────────────────────
+const createTransporter = async () => {
+  const user = process.env.GMAIL_USER;
+  const pass = process.env.GMAIL_APP_PASSWORD;
+
+  if (!user || !pass) {
+    throw new Error('SMTP credentials not configured. Set GMAIL_USER and GMAIL_APP_PASSWORD env vars.');
+  }
+
+  const ipv4 = await getSmtpIPv4();
+  const smtpHost = ipv4 || 'smtp.gmail.com';
 
   return nodemailer.createTransport({
     host: smtpHost,
-    port: 587,        // 587 + STARTTLS — standard submission port, rarely blocked
-    secure: false,    // STARTTLS upgrade after plain connection
-    requireTLS: true, // Reject if server won't do TLS
+    port: 465,       // SSL — avoids STARTTLS ENETUNREACH race on Render
+    secure: true,
     tls: {
-      // Must set servername when connecting by IP so cert validation works
-      servername: 'smtp.gmail.com',
-      rejectUnauthorized: false,
+      servername: 'smtp.gmail.com', // Required when connecting by raw IP
+      rejectUnauthorized: true,
     },
-    auth: {
-      user,
-      pass,
-    },
+    auth: { user, pass },
     connectionTimeout: 20000,
     greetingTimeout: 20000,
     socketTimeout: 25000,
@@ -328,8 +332,8 @@ const buildMeetUserEmailHTML = (meeting, settings) => {
 // ─── Main Send Function: Lead Submissions ────────────────────────────────────
 export const sendLeadEmails = async (lead, settings) => {
   const config = sourceConfig[lead.source] || sourceConfig['Other'];
-  const transporter = createTransporter();
-  const adminEmail = process.env.GMAIL_USER || 'ankityadav941318@gmail.com';
+  const transporter = await createTransporter();
+  const adminEmail = process.env.GMAIL_USER;
   const companyName = settings?.companyName || 'Orqiva Tech';
 
   // 1. Email to Admin
@@ -355,8 +359,8 @@ export const sendLeadEmails = async (lead, settings) => {
 
 // ─── Main Send Function: Meeting Creation ────────────────────────────────────
 export const sendMeetingScheduledEmails = async (meeting, lead = {}, settings = {}) => {
-  const transporter = createTransporter();
-  const adminEmail = process.env.GMAIL_USER || 'ankityadav941318@gmail.com';
+  const transporter = await createTransporter();
+  const adminEmail = process.env.GMAIL_USER;
   const companyName = settings?.companyName || 'Orqiva Tech';
 
   // 1. Admin Meeting Alert
@@ -382,7 +386,7 @@ export const sendMeetingScheduledEmails = async (meeting, lead = {}, settings = 
 
 // ─── Main Send Function: Admin Login OTP ─────────────────────────────────────
 export const sendAdminOtpEmail = async (email, otp) => {
-  const transporter = createTransporter();
+  const transporter = await createTransporter();
   const companyName = 'ORQIVA Tech';
 
   return transporter.sendMail({
