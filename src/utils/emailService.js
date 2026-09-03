@@ -2,12 +2,20 @@ import nodemailer from 'nodemailer';
 
 // ─── Transporter ────────────────────────────────────────────────────────────
 const createTransporter = () => {
+  const user = process.env.GMAIL_USER || 'ankityadav941318@gmail.com';
+  const pass = process.env.GMAIL_APP_PASSWORD || 'fbab yamv kvut rvtm';
+
   return nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true, // Use SSL
     auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD,
+      user,
+      pass,
     },
+    connectionTimeout: 12000,
+    greetingTimeout: 12000,
+    socketTimeout: 15000,
   });
 };
 
