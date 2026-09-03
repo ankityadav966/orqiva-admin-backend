@@ -38,6 +38,14 @@ const adminSchema = new mongoose.Schema(
     lastLogin: {
       type: Date,
     },
+    loginOtp: {
+      type: String,
+      select: false,
+    },
+    loginOtpExpires: {
+      type: Date,
+      select: false,
+    },
   },
   { timestamps: true }
 );

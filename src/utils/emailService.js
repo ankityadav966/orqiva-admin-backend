@@ -339,3 +339,72 @@ export const sendMeetingScheduledEmails = async (meeting, lead = {}, settings = 
     html: buildMeetUserEmailHTML(meeting, settings),
   });
 };
+
+// ─── Main Send Function: Admin Login OTP ─────────────────────────────────────
+export const sendAdminOtpEmail = async (email, otp) => {
+  const transporter = createTransporter();
+  const companyName = 'ORQIVA Tech';
+
+  return transporter.sendMail({
+    from: `"${companyName} Security" <${process.env.GMAIL_USER}>`,
+    to: email,
+    subject: `${otp} is your ORQIVA Tech Admin Verification Code`,
+    text: `Your ORQIVA Tech CMS Admin verification code is: ${otp}. It will expire in 10 minutes. Do not share this code with anyone.`,
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login Verification</title>
+</head>
+<body style="margin: 0; padding: 30px 15px; background-color: #070B14; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <div style="max-width: 520px; margin: 0 auto; background: #0E1524; border: 1px solid #1E2D4A; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);">
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #111C2E 0%, #0E1524 100%); padding: 32px 24px; text-align: center; border-bottom: 1px solid #1E2D4A;">
+      <div style="display: inline-block; width: 48px; height: 48px; line-height: 48px; border-radius: 14px; background: linear-gradient(135deg, #FF8336, #FF5A1F); color: #ffffff; font-size: 22px; font-weight: 900; margin-bottom: 12px; box-shadow: 0 8px 20px rgba(255, 106, 33, 0.35);">
+        O
+      </div>
+      <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.5px;">
+        ORQIVA <span style="color: #FF6A21;">TECH</span>
+      </h1>
+      <p style="color: #94A3B8; margin: 6px 0 0; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">
+        Admin Security Verification
+      </p>
+    </div>
+
+    <!-- Body -->
+    <div style="padding: 36px 28px; text-align: center;">
+      <p style="color: #E2E8F0; font-size: 15px; line-height: 1.5; margin: 0 0 24px; font-weight: 500;">
+        A request was made to log in to the <strong>ORQIVA Tech Admin CMS Dashboard</strong>. Use the 6-digit one-time passcode below to verify your identity:
+      </p>
+
+      <!-- OTP Display Box -->
+      <div style="background: #070B14; border: 2px dashed #FF6A21; border-radius: 16px; padding: 22px 16px; margin: 0 auto 28px; max-width: 320px;">
+        <span style="font-size: 38px; font-weight: 900; letter-spacing: 10px; color: #FF6A21; display: inline-block; font-family: monospace, Courier, sans-serif;">
+          ${otp}
+        </span>
+      </div>
+
+      <div style="background: #111C2E; border-radius: 12px; padding: 14px 18px; margin-bottom: 24px; text-align: left; border-left: 3px solid #FF6A21;">
+        <p style="margin: 0; color: #94A3B8; font-size: 12px; line-height: 1.5;">
+          ⏱️ This code is valid for <strong style="color: #FFFFFF;">10 minutes</strong> only. If you did not request this code, you can safely ignore this email.
+        </p>
+      </div>
+
+      <p style="color: #64748B; font-size: 12px; margin: 0;">
+        Authorized Administrator: <span style="color: #94A3B8; font-weight: 600;">${email}</span>
+      </p>
+    </div>
+
+    <!-- Footer -->
+    <div style="background: #070B14; padding: 18px; text-align: center; border-top: 1px solid #1E2D4A;">
+      <p style="color: #64748B; font-size: 11px; margin: 0;">
+        &copy; ${new Date().getFullYear()} ORQIVA Tech Enterprise Control Panel. All rights reserved.
+      </p>
+    </div>
+  </div>
+</body>
+</html>`,
+  });
+};
