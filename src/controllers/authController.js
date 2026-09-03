@@ -55,13 +55,21 @@ export const sendOtp = asyncHandler(async (req, res) => {
     await admin.save({ validateBeforeSave: false });
   }
 
+  // Always log OTP to console (visible in Render logs as fallback)
+  console.log(`[OTP] Admin login OTP for ${normalizedEmail}: ${otp} (expires in 10 min)`);
+
   try {
     await sendAdminOtpEmail(normalizedEmail, otp);
   } catch (emailErr) {
-    console.error('[OTP Email Error]:', emailErr);
-    return ApiResponse.error(res, {
-      statusCode: 500,
-      message: `Failed to send verification code email: ${emailErr.message}`,
+    console.error('[OTP Email Error]:', emailErr.message);
+    // Don't fail — OTP is saved in DB, admin can check Render logs
+    return ApiResponse.success(res, {
+      message: `Verification code generated. Email delivery encountered an issue — please check your Render logs for the OTP code or try again.`,
+      data: {
+        email: normalizedEmail,
+        expiresInMinutes: 10,
+        emailDeliveryFailed: true,
+      },
     });
   }
 
