@@ -13,6 +13,7 @@ const startServer = async () => {
     await connectDB();
 
     // Start background auto-expiry scheduler for Google Meet meetings
+
     initMeetingScheduler();
 
     const server = app.listen(ENV.PORT, () => {
