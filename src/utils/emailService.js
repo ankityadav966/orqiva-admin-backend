@@ -1,4 +1,10 @@
 import nodemailer from 'nodemailer';
+import dns from 'dns';
+
+// Force IPv4 resolution to prevent ENETUNREACH on Render Linux containers
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
 
 // ─── Transporter ────────────────────────────────────────────────────────────
 const createTransporter = () => {
@@ -9,6 +15,7 @@ const createTransporter = () => {
     host: 'smtp.gmail.com',
     port: 465,
     secure: true, // Use SSL
+    family: 4, // Force IPv4 address lookup
     auth: {
       user,
       pass,

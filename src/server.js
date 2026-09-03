@@ -1,3 +1,8 @@
+import dns from 'dns';
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
+
 import app from './app.js';
 import { connectDB } from './config/db.js';
 import { ENV } from './config/env.js';
