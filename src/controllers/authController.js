@@ -28,7 +28,7 @@ export const sendOtp = asyncHandler(async (req, res) => {
   if (normalizedEmail !== AUTHORIZED_ADMIN_EMAIL) {
     return ApiResponse.error(res, {
       statusCode: 403,
-      message: `Access denied. Only the authorized administrator email (${AUTHORIZED_ADMIN_EMAIL}) is permitted to access this panel.`,
+      message: 'Access denied. You are not authorized to access this panel.',
     });
   }
 
@@ -98,7 +98,7 @@ export const verifyOtp = asyncHandler(async (req, res) => {
   if (normalizedEmail !== AUTHORIZED_ADMIN_EMAIL) {
     return ApiResponse.error(res, {
       statusCode: 403,
-      message: 'Access denied. Unauthorized administrator email.',
+      message: 'Access denied. You are not authorized to access this panel.',
     });
   }
 
