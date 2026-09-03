@@ -1,20 +1,12 @@
 import nodemailer from 'nodemailer';
 import dns from 'dns';
-import { Resend } from 'resend';
 
 // Force IPv4 — prevents ENETUNREACH on Render Linux containers
 if (dns.setDefaultResultOrder) {
   dns.setDefaultResultOrder('ipv4first');
 }
 
-// ─── Resend Client (HTTP API — port 443, never blocked on Render) ─────────────
-const getResendClient = () => {
-  const key = process.env.RESEND_API_KEY;
-  if (!key) return null;
-  return new Resend(key);
-};
-
-// ─── Nodemailer SMTP (local dev fallback only) ────────────────────────────────
+// ─── Nodemailer SMTP Transporter ─────────────────────────────────────────────
 let _smtpIPv4Promise = null;
 const getSmtpIPv4 = () => {
   if (!_smtpIPv4Promise) {
@@ -30,7 +22,7 @@ const getSmtpIPv4 = () => {
 const createSmtpTransporter = async () => {
   const user = process.env.GMAIL_USER;
   const pass = process.env.GMAIL_APP_PASSWORD;
-  if (!user || !pass) throw new Error('SMTP credentials not configured.');
+  if (!user || !pass) throw new Error('SMTP credentials not configured. Set GMAIL_USER and GMAIL_APP_PASSWORD.');
   const ipv4 = await getSmtpIPv4();
   return nodemailer.createTransport({
     host: ipv4 || 'smtp.gmail.com',
@@ -375,8 +367,6 @@ export const sendMeetingScheduledEmails = async (meeting, lead = {}, settings = 
 };
 
 // ─── Main Send Function: Admin Login OTP ─────────────────────────────────────
-// Uses Resend HTTP API (port 443) when RESEND_API_KEY is set — works on Render.
-// Falls back to Gmail SMTP for local development.
 export const sendAdminOtpEmail = async (email, otp) => {
   const companyName = 'ORQIVA Tech';
   const subject = `${otp} is your ORQIVA Tech Admin Verification Code`;
@@ -407,21 +397,6 @@ export const sendAdminOtpEmail = async (email, otp) => {
 </body>
 </html>`;
 
-  // ── Try Resend HTTP API first (works on Render — uses HTTPS port 443) ──────
-  const resend = getResendClient();
-  if (resend) {
-    const fromAddress = process.env.RESEND_FROM_EMAIL || 'ORQIVA Tech Security <onboarding@resend.dev>';
-    await resend.emails.send({
-      from: fromAddress,
-      to: [email],
-      subject,
-      text,
-      html,
-    });
-    return;
-  }
-
-  // ── Fallback: Gmail SMTP (works locally, may be blocked on Render) ─────────
   const transporter = await createSmtpTransporter();
   await transporter.sendMail({
     from: `"${companyName} Security" <${process.env.GMAIL_USER}>`,
@@ -431,3 +406,4 @@ export const sendAdminOtpEmail = async (email, otp) => {
     html,
   });
 };
+
