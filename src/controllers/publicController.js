@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { Service } from '../models/Service.js';
 import { Industry } from '../models/Industry.js';
 import { Project } from '../models/Project.js';
@@ -353,28 +354,100 @@ export const submitPublicNewsletter = asyncHandler(async (req, res) => {
 
 // Submit Job Application
 export const submitJobApplication = asyncHandler(async (req, res) => {
-  const { jobId, candidateName, email, phone, coverLetter, resumeUrl } = req.body;
+  const {
+    jobId,
+    jobTitle,
+    candidateName,
+    fullName,
+    name,
+    email,
+    phone,
+    experience,
+    currentCompany,
+    currentCtc,
+    expectedCtc,
+    noticePeriod,
+    portfolioUrl,
+    linkedinUrl,
+    resumeUrl,
+    coverLetter,
+  } = req.body;
 
-  if (!jobId || !candidateName || !email) {
+  const finalName = (candidateName || fullName || name || '').trim();
+  const finalEmail = (email || '').toLowerCase().trim();
+
+  if (!finalName || !finalEmail) {
     return ApiResponse.error(res, {
       statusCode: 400,
-      message: 'Job ID, candidate name, and email are required.',
+      message: 'Candidate name and email are required.',
     });
   }
 
+  // Resolve jobId and jobTitle
+  let validJobId = null;
+  let resolvedJobTitle = (jobTitle || '').trim();
+
+  if (jobId && mongoose.Types.ObjectId.isValid(jobId)) {
+    validJobId = jobId;
+    if (!resolvedJobTitle) {
+      const jobDoc = await Job.findById(jobId);
+      if (jobDoc) resolvedJobTitle = jobDoc.title;
+    }
+  } else if (resolvedJobTitle) {
+    const jobDoc = await Job.findOne({
+      $or: [
+        { title: { $regex: new RegExp(`^${resolvedJobTitle}$`, 'i') } },
+        { slug: { $regex: new RegExp(`^${resolvedJobTitle}$`, 'i') } },
+      ],
+    });
+    if (jobDoc) {
+      validJobId = jobDoc._id;
+      resolvedJobTitle = jobDoc.title;
+    }
+  }
+
   const application = await JobApplication.create({
-    jobId,
-    candidateName,
-    email,
-    phone: phone || '',
-    coverLetter: coverLetter || '',
-    resumeUrl: resumeUrl || '',
+    jobId: validJobId || undefined,
+    jobTitle: resolvedJobTitle || 'General Application',
+    candidateName: finalName,
+    email: finalEmail,
+    phone: (phone || '').trim(),
+    experience: (experience || '').trim(),
+    currentCompany: (currentCompany || '').trim(),
+    currentCtc: (currentCtc || '').trim(),
+    expectedCtc: (expectedCtc || '').trim(),
+    noticePeriod: (noticePeriod || '').trim(),
+    portfolioUrl: (portfolioUrl || linkedinUrl || '').trim(),
+    resumeUrl: (resumeUrl || '').trim(),
+    coverLetter: (coverLetter || '').trim(),
     status: 'Applied',
   });
 
   return ApiResponse.success(res, {
     statusCode: 201,
-    message: 'Application submitted successfully. Our HR team will review your profile.',
+    message: 'Application submitted successfully! Our HR team will review your profile.',
     data: { id: application._id },
+  });
+});
+
+// Public File / Resume Upload
+export const uploadPublicFile = asyncHandler(async (req, res) => {
+  if (!req.file) {
+    return ApiResponse.error(res, { statusCode: 400, message: 'No file uploaded.' });
+  }
+
+  const file = req.file;
+  const fileUrl = `/uploads/${file.filename}`;
+
+  return ApiResponse.success(res, {
+    statusCode: 201,
+    message: 'File uploaded successfully.',
+    data: {
+      url: fileUrl,
+      fileName: file.filename,
+      originalName: file.originalname,
+      size: file.size,
+      mimeType: file.mimetype,
+    },
   });
 });

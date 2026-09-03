@@ -18,9 +18,11 @@ import {
   submitPublicContact,
   submitPublicNewsletter,
   submitJobApplication,
+  uploadPublicFile,
 } from '../controllers/publicController.js';
 import { validate } from '../middlewares/validateMiddleware.js';
 import { leadValidator, contactValidator } from '../validators/index.js';
+import { upload } from '../middlewares/uploadMiddleware.js';
 
 const router = express.Router();
 
@@ -51,7 +53,9 @@ router.get('/jobs', getPublicJobs);
 router.get('/careers', getPublicJobs);
 router.get('/settings', getPublicSettings);
 
-// Public submissions
+// Public submissions & uploads
+router.post('/upload', upload.single('file'), uploadPublicFile);
+router.post('/careers/upload-resume', upload.single('resume'), uploadPublicFile);
 router.post('/leads', leadValidator, validate, submitPublicLead);
 router.post('/contact', contactValidator, validate, submitPublicContact);
 router.post('/newsletter', submitPublicNewsletter);

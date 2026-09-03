@@ -81,8 +81,13 @@ const jobApplicationSchema = new mongoose.Schema(
     jobId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Job',
-      required: true,
+      required: false,
       index: true,
+    },
+    jobTitle: {
+      type: String,
+      default: '',
+      trim: true,
     },
     candidateName: {
       type: String,
@@ -100,9 +105,40 @@ const jobApplicationSchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
+    experience: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    currentCompany: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    currentCtc: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    expectedCtc: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    noticePeriod: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    portfolioUrl: {
+      type: String,
+      default: '',
+      trim: true,
+    },
     resumeUrl: {
       type: String,
       default: '',
+      trim: true,
     },
     coverLetter: {
       type: String,

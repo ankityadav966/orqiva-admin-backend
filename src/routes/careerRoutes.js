@@ -7,6 +7,7 @@ import {
   deleteJob,
   getApplications,
   updateApplicationStatus,
+  deleteApplication,
 } from '../controllers/careerController.js';
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 
@@ -22,5 +23,6 @@ router.delete('/jobs/:id', deleteJob);
 
 router.get('/applications', getApplications);
 router.put('/applications/:id/status', updateApplicationStatus);
+router.delete('/applications/:id', deleteApplication);
 
 export default router;

@@ -101,6 +101,8 @@ export const getApplications = asyncHandler(async (req, res) => {
     query.$or = [
       { candidateName: { $regex: search, $options: 'i' } },
       { email: { $regex: search, $options: 'i' } },
+      { phone: { $regex: search, $options: 'i' } },
+      { jobTitle: { $regex: search, $options: 'i' } },
     ];
   }
 
@@ -130,4 +132,12 @@ export const updateApplicationStatus = asyncHandler(async (req, res) => {
     return ApiResponse.error(res, { statusCode: 404, message: 'Application not found.' });
   }
   return ApiResponse.success(res, { message: 'Status updated.', data: app });
+});
+
+export const deleteApplication = asyncHandler(async (req, res) => {
+  const app = await JobApplication.findByIdAndDelete(req.params.id);
+  if (!app) {
+    return ApiResponse.error(res, { statusCode: 404, message: 'Application not found.' });
+  }
+  return ApiResponse.success(res, { message: 'Application deleted successfully.', data: null });
 });
